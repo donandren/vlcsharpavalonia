@@ -16,22 +16,33 @@
   </ItemGroup>
   <ItemGroup>
     <AvaloniaResource Remove="Example1.xaml" />
+    <AvaloniaResource Remove="Example2.xaml" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="Example1.xaml" />
+    <None Remove="Example2.xaml" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.9.0-preview4" />
     <PackageReference Include="Avalonia.Desktop" Version="0.9.0-preview4" />
+    <PackageReference Include="Avalonia.ReactiveUI" Version="0.9.0-preview4" />
     <PackageReference Include="VideoLAN.LibVLC.Mac" Version="3.1.3.1" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Version="3.0.8" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Example2.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </EmbeddedResource>
     <EmbeddedResource Include="Example1.xaml">
       <Generator>MSBuild:Compile</Generator>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\LibVLCSharp.Avalonia\LibVLCSharp.Avalonia.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Example2.xaml.cs">
+      <DependentUpon>Example2.xaml</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

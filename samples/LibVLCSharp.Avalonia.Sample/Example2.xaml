@@ -1,0 +1,50 @@
+﻿<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:v="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="LibVLCSharp.Avalonia.Sample.Example2"
+        Title="Example2" Height="450" Width="800">
+  <Grid RowDefinitions="*, Auto, Auto, Auto">
+    <v:VideoView x:Name="VideoView" Grid.Row="0" MediaPlayer="{Binding MediaPlayer}">
+    </v:VideoView>
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
+      <TextBlock Text="File (url):" Grid.Column="0" VerticalAlignment="Center" />
+      <TextBox Text="{Binding MediaUrl}" Grid.Column="1" />
+      <Button Content="Open File" Command="{Binding OpenCommand}" Grid.Column="2" />
+    </Grid>
+    <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+      <TextBlock Text="{Binding CurrentTime}" Grid.Column="0" />
+      <TextBlock Text="{Binding Duration}" Grid.Column="2" />
+      <Slider Minimum="0" Maximum="100" Value="{Binding Position}" Grid.Column="1" />
+    </Grid>
+    <Grid Grid.Row="3" ColumnDefinitions="Auto, *,Auto">
+      <StackPanel Orientation="Horizontal" Grid.Column="0" Spacing="5">
+        <Button Content="Play" Command="{Binding PlayCommand}" />
+        <Button Content="Stop" Command="{Binding StopCommand}" />
+        <Button Content="Pause" Command="{Binding PauseCommand}" />
+        <Button Content="-1s" Command="{Binding BackwardCommand}" />
+        <Button Content="+1s" Command="{Binding ForwardCommand}" />
+        <Button Content="Next Frame" Command="{Binding NextFrameCommand}" />
+      </StackPanel>
+
+      <Grid ColumnDefinitions="Auto,*" Grid.Column="1">
+        <TextBlock Text="{Binding State, StringFormat='State:\{0\}'}" Grid.Column="0" VerticalAlignment="Center" />
+        <TextBlock Margin="5,0,0,0" Text="{Binding Information}" TextWrapping="Wrap" Grid.Column="1" VerticalAlignment="Center" />
+      </Grid>
+      
+
+      <StackPanel Orientation="Horizontal" Grid.Column="2">
+        <CheckBox Content="Volume:" IsChecked="{Binding !IsMuted, Mode=TwoWay}" />
+        <Slider IsEnabled="{Binding !IsMuted}" Minimum="0" Maximum="100" Width="200" Value="{Binding Volume}" VerticalAlignment="Center">
+          <Slider.Styles>
+            <Style Selector="Slider:disabled">
+              <Setter Property="Opacity" Value="0.5" />
+            </Style>
+          </Slider.Styles>
+        </Slider>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

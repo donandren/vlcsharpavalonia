@@ -22,6 +22,9 @@ namespace LibVLCSharp.Avalonia
         private PixelFormat _pixelFormat;
         private uint _pixelFormatPixelSize;
         private WriteableBitmap _videoSource;
+        private WriteableBitmap _currentVideoSource;
+        private PixelSize _videoSourcePixelSize;
+        private readonly object _videoSourceLock = new object();
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -90,7 +93,12 @@ namespace LibVLCSharp.Avalonia
         /// </summary>
         private void CleanUp()
         {
-            VideoSource = null;
+            lock (_videoSourceLock)
+            {
+                VideoSource = _currentVideoSource;
+                VideoSource = null;
+                _currentVideoSource = null;
+            }
         }
 
         /// <summary>
@@ -122,7 +130,7 @@ namespace LibVLCSharp.Avalonia
 
             if (!_disposed)
             {
-                CleanUp();
+                Dispatcher.UIThread.InvokeAsync(() => CleanUp());
             }
         }
 
@@ -143,25 +151,33 @@ namespace LibVLCSharp.Avalonia
         //     callback [IN]
         private void DisplayVideo(IntPtr opaque, IntPtr picture)
         {
-            var wb = _videoSource;
-
-            if (wb == null || wb.PixelSize != _formatSize)
+            WriteableBitmap wb;
+            lock (_videoSourceLock)
             {
-                wb = new WriteableBitmap(_formatSize, new Vector(96, 96), _pixelFormat);
-            }
+                wb = _currentVideoSource;
 
-            using (var fb = wb.Lock())
-            {
-                unsafe
+                if (wb == null || _videoSourcePixelSize != _formatSize)
                 {
-                    long size = fb.Size.Width * fb.Size.Height * 4;
-                    Buffer.MemoryCopy((void*)opaque, (void*)fb.Address, size, size);
+                    _currentVideoSource = wb = new WriteableBitmap(_formatSize, new Vector(96, 96), _pixelFormat);
+                    _videoSourcePixelSize = _formatSize;
+                }
+
+                using (var fb = wb.Lock())
+                {
+                    unsafe
+                    {
+                        long size = fb.Size.Width * fb.Size.Height * 4;
+                        Buffer.MemoryCopy((void*)opaque, (void*)fb.Address, size, size);
+                    }
                 }
             }
 
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                VideoSource = wb;
+                lock (_videoSourceLock)
+                {
+                    VideoSource = _currentVideoSource;
+                }
 
                 _invalidate();
             });

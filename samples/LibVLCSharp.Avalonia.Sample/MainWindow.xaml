@@ -8,5 +8,6 @@
         Title="LibVLCSharp.Avalonia.Sample" Height="450" Width="800">
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="20">
     <Button x:Name="example1" Content="Example 1"  Width="100"/>
+    <Button x:Name="example2" Content="Example 2"  Width="100"/>
   </StackPanel>
 </Window>
