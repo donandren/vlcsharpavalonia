@@ -9,7 +9,7 @@
         <Setter Property="Template">
             <ControlTemplate>
                 <Panel Background="{TemplateBinding Background}">
-                    <Image Name="PART_RenderImage" />
+                    <local:VLCImageRenderer Name="PART_RenderImage" />
                     <ContentPresenter Content="{TemplateBinding Content}" />
                 </Panel>
             </ControlTemplate>

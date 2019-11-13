@@ -180,7 +180,7 @@ namespace LibVLCSharp.Avalonia
                 }
 
                 _invalidate();
-            });
+            }, DispatcherPriority.Background);
         }
 
         /// <summary>Callback prototype to allocate and lock a picture buffer.</summary>

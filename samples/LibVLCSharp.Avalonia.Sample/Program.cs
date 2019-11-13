@@ -17,6 +17,7 @@ namespace LibVLCSharp.Avalonia.Sample
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
                 .UseReactiveUI()
+                //.With(new Win32PlatformOptions() { UseDeferredRendering = false }) //with defered rendering false look like it's working slightly better
                 .UseVLCSharp()
                 .LogToDebug();
 
