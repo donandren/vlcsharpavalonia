@@ -4,15 +4,16 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:local="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
              mc:Ignorable="d">
-    <Style Selector="local|VideoView">
-        <Setter Property="Background" Value="Black" />
-        <Setter Property="Template">
-            <ControlTemplate>
-                <Panel Background="{TemplateBinding Background}">
-                    <local:VLCImageRenderer Name="PART_RenderImage" />
-                    <ContentPresenter Content="{TemplateBinding Content}" />
-                </Panel>
-            </ControlTemplate>
-        </Setter>
-    </Style>
+  <Style Selector="local|VideoView">
+    <Setter Property="Background" Value="Black" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <!--<Image Name="PART_RenderImage" />-->
+          <local:VLCImageRenderer Name="PART_RenderImage" DisplayRenderStats="{TemplateBinding DisplayRenderStats}" />
+          <ContentPresenter Content="{TemplateBinding Content}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
 </Styles>

@@ -16,7 +16,9 @@ namespace LibVLCSharp.Avalonia.Sample
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
                 .UsePlatformDetect()
+                //.UseDirect2D1()
                 .UseReactiveUI()
+                //.With(new AvaloniaNativePlatformOptions() { UseDeferredRendering = false })
                 //.With(new Win32PlatformOptions() { UseDeferredRendering = false }) //with defered rendering false look like it's working slightly better
                 .UseVLCSharp()
                 .LogToDebug();

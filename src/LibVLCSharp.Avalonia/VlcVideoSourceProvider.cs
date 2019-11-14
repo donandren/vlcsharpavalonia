@@ -1,9 +1,8 @@
 ﻿using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Threading;
 using System;
-using System.ComponentModel;
+using System.Reactive.Subjects;
 using System.Runtime.InteropServices;
 using System.Text;
 using vlc = LibVLCSharp.Shared;
@@ -13,20 +12,18 @@ namespace LibVLCSharp.Avalonia
     /// <summary>
     /// The class that can provide a Avalonia Image Source to display the video.
     /// </summary>
-    public class VlcVideoSourceProvider : INotifyPropertyChanged, IDisposable
+    public class VlcVideoSourceProvider : IDisposable
     {
         private IntPtr _buffer;
         private object[] _callbacks;
         private PixelSize _formatSize;
-        private Action _invalidate;
         private PixelFormat _pixelFormat;
         private uint _pixelFormatPixelSize;
-        private WriteableBitmap _videoSource;
-        private WriteableBitmap _currentVideoSource;
-        private PixelSize _videoSourcePixelSize;
-        private readonly object _videoSourceLock = new object();
+        private VlcSharpWriteableBitmap _videoSource = new VlcSharpWriteableBitmap();
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        private ISubject<IBitmap> _display = new Subject<IBitmap>();
+
+        public IObservable<IBitmap> Display => _display;
 
         /// <summary>
         /// The vlc media player instance.
@@ -36,21 +33,7 @@ namespace LibVLCSharp.Avalonia
         /// <summary>
         /// The Image source that represents the video.
         /// </summary>
-        public IBitmap VideoSource
-        {
-            get => _videoSource;
-
-            private set
-            {
-                if (_videoSource != value)
-                {
-                    var old = _videoSource;
-                    _videoSource = (WriteableBitmap)value;
-                    OnPropertyChanged(nameof(VideoSource));
-                    old?.Dispose();
-                }
-            }
-        }
+        public IBitmap VideoSource => _videoSource;
 
         private static void ToFourCC(string fourCCString, IntPtr destination)
         {
@@ -67,10 +50,9 @@ namespace LibVLCSharp.Avalonia
             }
         }
 
-        public void Init(vlc.MediaPlayer player, Action invalidate)
+        public void Init(vlc.MediaPlayer player)
         {
             MediaPlayer = player;
-            _invalidate = invalidate;
 
             var c = new vlc.MediaPlayer.LibVLCVideoCleanupCb(CleanupCallback);
             var f = new vlc.MediaPlayer.LibVLCVideoFormatCb(VideoFormatCallback);
@@ -85,20 +67,13 @@ namespace LibVLCSharp.Avalonia
             _callbacks = new object[] { c, f, lv, uv, d };
         }
 
-        protected virtual void OnPropertyChanged(string propertyName)
-                    => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
         /// <summary>
         /// Removes the video Source
         /// </summary>
         private void CleanUp()
         {
-            lock (_videoSourceLock)
-            {
-                VideoSource = _currentVideoSource;
-                VideoSource = null;
-                _currentVideoSource = null;
-            }
+            _videoSource.Clear();
+            _display.OnNext(null);
         }
 
         /// <summary>
@@ -130,7 +105,7 @@ namespace LibVLCSharp.Avalonia
 
             if (!_disposed)
             {
-                Dispatcher.UIThread.InvokeAsync(() => CleanUp());
+                CleanUp();
             }
         }
 
@@ -151,36 +126,20 @@ namespace LibVLCSharp.Avalonia
         //     callback [IN]
         private void DisplayVideo(IntPtr opaque, IntPtr picture)
         {
-            WriteableBitmap wb;
-            lock (_videoSourceLock)
-            {
-                wb = _currentVideoSource;
-
-                if (wb == null || _videoSourcePixelSize != _formatSize)
-                {
-                    _currentVideoSource = wb = new WriteableBitmap(_formatSize, new Vector(96, 96), _pixelFormat);
-                    _videoSourcePixelSize = _formatSize;
-                }
-
-                using (var fb = wb.Lock())
+            _videoSource.Write(_formatSize, new Vector(96, 96), _pixelFormat,
+                fb =>
                 {
                     unsafe
                     {
                         long size = fb.Size.Width * fb.Size.Height * 4;
                         Buffer.MemoryCopy((void*)opaque, (void*)fb.Address, size, size);
                     }
-                }
-            }
+                });
 
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                lock (_videoSourceLock)
-                {
-                    VideoSource = _currentVideoSource;
-                }
+            _display.OnNext(_videoSource);
 
-                _invalidate();
-            }, DispatcherPriority.Background);
+            //we can wait bitmap to render ???
+            //_videoSource.Rendered.FirstAsync().Timeout(TimeSpan.FromMilliseconds(10)).Wait();
         }
 
         /// <summary>Callback prototype to allocate and lock a picture buffer.</summary>
@@ -298,6 +257,8 @@ namespace LibVLCSharp.Avalonia
         {
             if (!_disposed)
             {
+                _videoSource.Dispose();
+                _videoSource = null;
                 _disposed = true;
                 MediaPlayer = null;
                 CleanUp();

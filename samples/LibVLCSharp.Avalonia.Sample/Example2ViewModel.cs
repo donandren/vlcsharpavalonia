@@ -1,8 +1,11 @@
-﻿using Avalonia.Controls;
+﻿using Avalonia.Collections;
+using Avalonia.Controls;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using ReactiveUI;
 using System;
+using System.Collections;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -14,8 +17,29 @@ namespace LibVLCSharp.Avalonia.Sample
 {
     public class Example2ViewModel : ReactiveObject, IDisposable
     {
+        static Example2ViewModel()
+        {
+            LoadPlayed();
+        }
+
+        private static void LoadPlayed()
+        {
+            try
+            {
+                if (File.Exists("playhistory.txt"))
+                    _played.AddRange(File.ReadAllLines("playhistory.txt"));
+            }
+            catch { }
+        }
+
+        private static void SavePlayed()
+        {
+            File.WriteAllLines("playhistory.txt", _played.ToArray());
+        }
+
         private LibVLC _libVLC;
         private CompositeDisposable _subscriptions;
+        private static AvaloniaList<string> _played = new AvaloniaList<string>();
 
         public Example2ViewModel(Window window)
         {
@@ -74,7 +98,11 @@ namespace LibVLCSharp.Avalonia.Sample
             stateChanged = Wrap(stateChanged);
 
             PlayCommand = ReactiveCommand.Create(
-               () => Op(() => MediaPlayer.Play(new Media(_libVLC, new Uri(MediaUrl).AbsoluteUri, FromType.FromLocation))),
+               () => Op(() =>
+               {
+                   MediaPlayer.Media = new Media(_libVLC, new Uri(MediaUrl).AbsoluteUri, FromType.FromLocation);
+                   MediaPlayer.Play();
+               }),
                hasMediaObservable);
 
             StopCommand = ReactiveCommand.Create(
@@ -109,6 +137,15 @@ namespace LibVLCSharp.Avalonia.Sample
             });
 
             MediaUrl = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+
+            Wrap(playingChanged).Subscribe(_ =>
+            {
+                if (!_played.Contains(MediaUrl))
+                {
+                    _played.Add(MediaUrl);
+                    SavePlayed();
+                }
+            });
         }
 
         public MediaPlayer MediaPlayer { get; }
@@ -176,6 +213,8 @@ namespace LibVLCSharp.Avalonia.Sample
         public ICommand BackwardCommand { get; }
         public ICommand NextFrameCommand { get; }
         public ICommand OpenCommand { get; }
+
+        public IEnumerable Played => _played;
 
         public void Dispose()
         {
