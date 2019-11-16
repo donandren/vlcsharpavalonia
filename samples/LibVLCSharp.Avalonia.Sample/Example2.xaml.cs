@@ -2,6 +2,7 @@
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using System;
+using System.Reactive.Linq;
 
 namespace LibVLCSharp.Avalonia.Sample
 {
@@ -13,6 +14,13 @@ namespace LibVLCSharp.Avalonia.Sample
             //Renderer.DrawFps = true;
 
             DataContext = new Example2ViewModel(this);
+
+            //it's open when we set text a bug in autocomplete?
+            var autoComplete = this.Get<AutoCompleteBox>("mediaUrl");
+            autoComplete.GetObservable(AutoCompleteBox.IsDropDownOpenProperty)
+                            .Skip(1).Take(1)
+                            .Subscribe(_ => autoComplete.IsDropDownOpen = false);
+
 #if DEBUG
             this.AttachDevTools();
 #endif
