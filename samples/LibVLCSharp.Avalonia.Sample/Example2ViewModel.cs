@@ -100,7 +100,9 @@ namespace LibVLCSharp.Avalonia.Sample
             PlayCommand = ReactiveCommand.Create(
                () => Op(() =>
                {
-                   MediaPlayer.Media = new Media(_libVLC, new Uri(MediaUrl).AbsoluteUri, FromType.FromLocation);
+                   string absolute = new Uri(MediaUrl).AbsoluteUri;
+                   bool isfile = absolute.StartsWith("file://");
+                   MediaPlayer.Media = new Media(_libVLC, MediaUrl, isfile ? FromType.FromPath : FromType.FromLocation);
                    MediaPlayer.Play();
                }),
                hasMediaObservable);
@@ -132,7 +134,7 @@ namespace LibVLCSharp.Avalonia.Sample
                 if (res.Any())
                 {
                     MediaUrl = res.FirstOrDefault();
-                    PlayCommand.Execute(null);
+                    Dispatcher.UIThread.InvokeAsync(() => PlayCommand.Execute(null));
                 }
             });
 
