@@ -2,6 +2,7 @@
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Avalonia.Utilities;
 using Avalonia.Visuals.Media.Imaging;
 using System;
@@ -13,7 +14,7 @@ using System.Threading;
 
 namespace LibVLCSharp.Avalonia
 {
-    public sealed class VlcSharpWriteableBitmap : IBitmap
+    public sealed class VlcSharpWriteableBitmap : IBitmap, IAffectsRender
     {
         private bool _disposed;
         private object _lockRead = new object();
@@ -29,6 +30,7 @@ namespace LibVLCSharp.Avalonia
         public IObservable<Unit> Rendered => _rendered;
         public Size Size => GetValueSafe(x => x.Size);
         public IObservable<Unit> Updated => _updated;
+        public event EventHandler Invalidated;
 
         public void Clear()
         {
@@ -133,6 +135,13 @@ namespace LibVLCSharp.Avalonia
 
         private void NotifyRendered() => _rendered?.OnNext(Unit.Default);
 
-        private void NotifyUpdated() => _updated?.OnNext(Unit.Default);
+        private void NotifyUpdated()
+        {
+            _updated?.OnNext(Unit.Default);
+            if (Invalidated != null)
+            {
+                Dispatcher.UIThread.Post(() => Invalidated?.Invoke(this, EventArgs.Empty));
+            }
+        }
     }
 }

@@ -53,7 +53,6 @@ namespace LibVLCSharp.Avalonia
             else
             {
                 PART_Image.Bind(Image.SourceProperty, _provider.Display);
-                _provider.Display.Subscribe(_ => Dispatcher.UIThread.Post(() => PART_Image?.InvalidateVisual()));
             }
         }
 

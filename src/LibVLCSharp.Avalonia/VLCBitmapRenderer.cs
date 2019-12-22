@@ -31,14 +31,7 @@ namespace LibVLCSharp.Avalonia
                                     .ObserveOn(AvaloniaScheduler.Instance)
                                     .Subscribe(_ => InvalidateMeasure());
 
-                    var f = vb.Updated.Subscribe(_ =>
-                    {
-                        _stats.DeliveredFrame();
-                        Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            InvalidateVisual();
-                        }, DispatcherPriority.Render);
-                    });
+                    var f = vb.Updated.Subscribe(_ => _stats.DeliveredFrame());
 
                     _subscriptions = new CompositeDisposable(m, f);
                 }
@@ -208,6 +201,12 @@ namespace LibVLCSharp.Avalonia
 
             public IDisposable RenderFrame()
             {
+                if(_delivered <= _rendered)
+                {
+                    //assume resize e.g. some forced invalidations not related to frames
+                    return Disposable.Empty;
+                }
+
                 var w = Stopwatch.StartNew();
                 _last = _start.ElapsedMilliseconds;
                 _frameTimes.Enqueue(_last);
