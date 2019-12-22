@@ -1,8 +1,10 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Logging;
+using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -143,11 +145,206 @@ namespace LibVLCSharp.Avalonia.Sample
         }
     }
 
+    public class UIRenderLoop60fps : IRenderLoop
+    {
+        private List<IRenderLoopTask> _items = new List<IRenderLoopTask>();
+        private IRenderTimer _timer;
+        private IPlatformThreadingInterface _platform;
+        private IDisposable _timerSubscription;
+
+        private IPlatformThreadingInterface Platform => _platform ?? (_platform = AvaloniaLocator.Current.GetService<IPlatformThreadingInterface>());
+
+        /// <summary>
+        /// Gets the render timer.
+        /// </summary>
+        protected IRenderTimer Timer
+        {
+            get
+            {
+                if (_timer == null)
+                {
+                    _timer = AvaloniaLocator.Current.GetService<IRenderTimer>();
+                }
+
+                return _timer;
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Add(IRenderLoopTask i)
+        {
+            Contract.Requires<ArgumentNullException>(i != null);
+            Dispatcher.UIThread.VerifyAccess();
+
+            _items.Add(i);
+
+            if (_items.Count == 1)
+            {
+                _timerSubscription = Platform.StartTimer(DispatcherPriority.Render,
+                    TimeSpan.FromMilliseconds(1000.0 / 65),
+                    () => TimerTick(TimeSpan.FromMilliseconds(Environment.TickCount)));
+                //Timer.Tick += TimerTick;
+            }
+        }
+
+        /// <inheritdoc/>
+        public void Remove(IRenderLoopTask i)
+        {
+            Contract.Requires<ArgumentNullException>(i != null);
+            Dispatcher.UIThread.VerifyAccess();
+
+            _items.Remove(i);
+
+            if (_items.Count == 0)
+            {
+                _timerSubscription?.Dispose();
+                _timerSubscription = null;
+                //Timer.Tick -= TimerTick;
+            }
+        }
+
+        private void TimerTick(TimeSpan time)
+        {
+            try
+            {
+                for (int i = 0; i < _items.Count; i++)
+                {
+                    var item = _items[i];
+                    if (item.NeedsUpdate)
+                    {
+                        try
+                        {
+                            item.Update(time);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.TryGet(LogEventLevel.Error, LogArea.Visual)?.Log(this, "Exception in render update: {Error}", ex);
+                        }
+                    }
+                    _items[i].Render();
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.TryGet(LogEventLevel.Error, LogArea.Visual)?.Log(this, "Exception in render loop: {Error}", ex);
+            }
+        }
+    }
+
+    public class DummyRenderLoop : IRenderLoop
+    {
+        public void Add(IRenderLoopTask i)
+        {
+        }
+
+        public void Remove(IRenderLoopTask i)
+        {
+        }
+    }
+
     public static class AppBuilderExtensions
     {
         public static T Use60fpsRendering<T>(this T builder) where T : AppBuilderBase<T>, new()
         {
             return builder.AfterSetup(_ => AvaloniaLocator.CurrentMutable.Bind<IRenderLoop>().ToConstant(new RenderLoop60fps()));
         }
+
+        public static T UseUIThreadRendering<T>(this T builder) where T : AppBuilderBase<T>, new()
+        {
+            return builder.AfterSetup(_ => AvaloniaLocator.CurrentMutable.Bind<IRenderLoop>().ToConstant(new UIRenderLoop60fps()));
+        }
+
+        public static T UseCustomRenderer<T>(this T builder, bool usePaint = true) where T : AppBuilderBase<T>, new()
+        {
+            return builder.AfterSetup(_ => AvaloniaLocator.CurrentMutable.Bind<IRendererFactory>().ToConstant(new RendererFactory(usePaint)));
+        }
+    }
+
+    public class RendererFactory : IRendererFactory
+    {
+        private bool _usePaint;
+
+        public RendererFactory(bool usePaint)
+        {
+            _usePaint = usePaint;
+        }
+
+        public IRenderer Create(IRenderRoot root, IRenderLoop renderLoop)
+        {
+            return new CustomDeferredRenderer(_usePaint, root, new DeferredRenderer(root, !_usePaint ? renderLoop : new DummyRenderLoop()));
+        }
+    }
+
+    public class CustomDeferredRenderer : IRenderer
+    {
+        private IRenderer _renderer;
+        private IRenderRoot _root;
+        private bool _usePaint;
+        private bool _invalidateSend;
+
+        public CustomDeferredRenderer(bool usePaint, IRenderRoot root, IRenderer renderer)
+        {
+            _renderer = renderer;
+            _root = root;
+            _usePaint = usePaint;
+        }
+
+        public bool DrawFps { get => _renderer.DrawFps; set => _renderer.DrawFps = value; }
+        public bool DrawDirtyRects { get => _renderer.DrawDirtyRects; set => _renderer.DrawDirtyRects = value; }
+
+        public void AddDirty(IVisual visual)
+        {
+            _renderer.AddDirty(visual);
+            if (_usePaint)
+            {
+                if (!_invalidateSend)
+                {
+                    _invalidateSend = true;
+                    _root.Invalidate(new Rect(_root.Bounds.Size));
+                }
+            }
+            else
+            {
+                if (!_invalidateSend)
+                {
+                    _invalidateSend = true;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _invalidateSend = false;
+                        var lt = _renderer as IRenderLoopTask;
+                        if (lt.NeedsUpdate)
+                            lt.Update(TimeSpan.FromMilliseconds(Environment.TickCount));
+                    }, DispatcherPriority.Render);
+                }
+            }
+        }
+
+        public event EventHandler<SceneInvalidatedEventArgs> SceneInvalidated
+        {
+            add => _renderer.SceneInvalidated += value;
+            remove => _renderer.SceneInvalidated -= value;
+        }
+
+        void IDisposable.Dispose() => _renderer.Dispose();
+
+        public IEnumerable<IVisual> HitTest(Point p, IVisual root, Func<IVisual, bool> filter)
+            => _renderer.HitTest(p, root, filter);
+
+        public IVisual HitTestFirst(Point p, IVisual root, Func<IVisual, bool> filter)
+            => _renderer.HitTestFirst(p, root, filter);
+
+        public void Paint(Rect rect)
+        {
+            _invalidateSend = false;
+            _renderer.Paint(rect);
+        }
+
+        public void RecalculateChildren(IVisual visual) => _renderer.RecalculateChildren(visual);
+
+        public void Resized(Size size) => _renderer.Resized(size);
+
+        public void Start() => _renderer.Start();
+
+        public void Stop() => _renderer.Stop();
     }
 }
