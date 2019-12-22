@@ -18,7 +18,9 @@ namespace LibVLCSharp.Avalonia.Sample
                 .UsePlatformDetect()
                 //.UseDirect2D1()
                 .UseReactiveUI()
-                .Use60fpsRendering()
+                //.Use60fpsRendering()
+                //.UseUIThreadRendering()
+                .UseCustomRenderer(true)
                 //.With(new AvaloniaNativePlatformOptions() { UseDeferredRendering = false })
                 //.With(new Win32PlatformOptions() { UseDeferredRendering = false }) //with defered rendering false look like it's working slightly better
                 .UseVLCSharp()
