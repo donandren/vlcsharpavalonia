@@ -118,7 +118,7 @@ namespace LibVLCSharp.Avalonia
                         if (_source is VlcSharpWriteableBitmap vb)
                             vb.Render(context, 1, _sourceRect, _destRect, _interpolationMode);
                         else
-                            context.DrawImage(_source.PlatformImpl, 1, _sourceRect, _destRect, _interpolationMode);
+                            context.DrawBitmap(_source.PlatformImpl, 1, _sourceRect, _destRect, _interpolationMode);
                     }
                 }
                 catch (Exception e)
@@ -134,7 +134,7 @@ namespace LibVLCSharp.Avalonia
         {
             if (LibVLCAvaloniaOptions.UseCustomDrawOperationRendering)
             {
-                var source = Source;
+                var source = Source as IBitmap;
                 if (source != null)
                 {
                     Rect viewPort = new Rect(Bounds.Size);
@@ -159,7 +159,7 @@ namespace LibVLCSharp.Avalonia
                     base.Render(context);
                 }
 
-                var size = Source?.PixelSize ?? default(PixelSize);
+                var size = (Source as IBitmap)?.PixelSize ?? default(PixelSize);
                 _stats.Render(context, $"{size.Width}x{size.Height}");
             }
         }
@@ -201,7 +201,7 @@ namespace LibVLCSharp.Avalonia
 
             public IDisposable RenderFrame()
             {
-                if(_delivered <= _rendered)
+                if (_delivered <= _rendered)
                 {
                     //assume resize e.g. some forced invalidations not related to frames
                     return Disposable.Empty;
@@ -245,8 +245,8 @@ namespace LibVLCSharp.Avalonia
                 {
                     _text = _text != null && _rendered % UpdateStatsPerFrames != 0 ?
                                     _text :
-                                    new FormattedText() { Text = $"{info}\n{ToString()}", Typeface = Typeface.Default };
-                    context.FillRectangle(Brushes.Black, _text.Bounds.Translate(new Vector(x, y)));
+                                    new FormattedText() { Text = $"{info}\n{ToString()}", FontSize = 12, Typeface = Typeface.Default };
+                    context.DrawRectangle(Brushes.Black, null, _text.Bounds.Translate(new Vector(x, y)));
                     context.DrawText(Brushes.White, new Point(x, y), _text.PlatformImpl);
                 }
             }
