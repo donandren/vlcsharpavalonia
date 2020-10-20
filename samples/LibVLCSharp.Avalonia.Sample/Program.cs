@@ -19,8 +19,9 @@ namespace LibVLCSharp.Avalonia.Sample
                 .UseReactiveUI()
                 //.Use60fpsRendering()
                 //.UseUIThreadRendering()
-                .UseCustomRenderer(false)
+                //.UseCustomRenderer(false)
                 //.With(new AvaloniaNativePlatformOptions() { UseDeferredRendering = false })
+                //.With(new AvaloniaNativePlatformOptions() { UseGpu = false })
                 //.With(new Win32PlatformOptions() { UseDeferredRendering = false }) //with defered rendering false look like it's working slightly better
                 .UseVLCSharp()
                 .LogToDebug();

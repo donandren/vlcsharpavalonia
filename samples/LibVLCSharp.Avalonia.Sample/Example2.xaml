@@ -7,7 +7,8 @@
         x:Class="LibVLCSharp.Avalonia.Sample.Example2"
         Title="Example2" Height="450" Width="800">
   <Grid RowDefinitions="*, Auto">
-    <v:VideoView x:Name="VideoView" Grid.Row="0" MediaPlayer="{Binding MediaPlayer}">
+    <v:VideoView x:Name="VideoView" Grid.Row="0" MediaPlayer="{Binding MediaPlayer}" RenderOptions.BitmapInterpolationMode="HighQuality"
+                 >
     </v:VideoView>
     <Grid Grid.Row="1" RowDefinitions="Auto,Auto,Auto">
       <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto">
