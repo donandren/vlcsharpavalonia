@@ -6,6 +6,8 @@ using Avalonia.Threading;
 using Avalonia.Utilities;
 using Avalonia.Visuals.Media.Imaging;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -91,6 +93,9 @@ namespace LibVLCSharp.Avalonia
 
         public void Save(Stream stream) => Read(b => b.Save(stream));
 
+        private Queue<WriteableBitmap> _buffer = new Queue<WriteableBitmap>();
+        private int MaxbuffersCount = 30;
+        
         public void Write(PixelSize size, Vector dpi, PixelFormat format, Action<ILockedFramebuffer> action)
         {
             using (LockWrite())
@@ -110,7 +115,18 @@ namespace LibVLCSharp.Avalonia
                 using (LockRead())
                 {
                     var tmp = _read;
+                    _buffer.Enqueue(tmp);
                     _read = _write;
+
+                    if (_buffer.Count >= MaxbuffersCount)
+                    {
+                        tmp = _buffer.Dequeue();
+                    }
+                    else
+                    {
+                        tmp = null;
+                    }
+                    
                     _write = tmp;
                 }
             }
