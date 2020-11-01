@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-             xmlns:local="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+             xmlns:local="using:LibVLCSharp.Avalonia"
              mc:Ignorable="d">
   <Style Selector="local|VideoView">
     <Setter Property="Background" Value="Black" />
@@ -12,6 +12,16 @@
           <!--<Image Name="PART_RenderImage" />-->
           <local:VLCImageRenderer Name="PART_RenderImage" DisplayRenderStats="{TemplateBinding DisplayRenderStats}" />
           <ContentPresenter Content="{TemplateBinding Content}" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="local|VideoView[VlcRenderingOptions=VlcNative]">
+    <Setter Property="Background" Value="Black" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <local:NativeVideoPresenter Name="PART_NativeHost" Content="{TemplateBinding Content}" />
         </Panel>
       </ControlTemplate>
     </Setter>

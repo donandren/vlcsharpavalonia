@@ -5,6 +5,7 @@ using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using System;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
 
 namespace LibVLCSharp.Avalonia
 {
@@ -15,8 +16,15 @@ namespace LibVLCSharp.Avalonia
             MediaPlayerProperty.Changed.AddClassHandler<VideoView>((v, e) => v.InitMediaPlayer());
         }
 
+        public VideoView()
+        {
+            VlcRenderingOptions = LibVLCAvaloniaOptions.RenderingOptions;
+        }
+
         private VlcVideoSourceProvider _provider = new VlcVideoSourceProvider();
         private Image PART_Image;
+        private NativeVideoPresenter PART_NativeHost;
+        private bool _templateApplied;
 
         public static readonly DirectProperty<VideoView, MediaPlayer> MediaPlayerProperty =
             AvaloniaProperty.RegisterDirect<VideoView, MediaPlayer>(nameof(MediaPlayer), v => v.MediaPlayer, (s, v) => s.MediaPlayer = v);
@@ -40,41 +48,73 @@ namespace LibVLCSharp.Avalonia
             set => SetAndRaise(DisplayRenderStatsProperty, ref _displayRenderStats, value);
         }
 
+        public static readonly StyledProperty<LibVLCAvaloniaRenderingOptions> VlcRenderingOptionsProperty =
+                AvaloniaProperty.Register<VideoView, LibVLCAvaloniaRenderingOptions>(nameof(VlcRenderingOptions));
+
+        public LibVLCAvaloniaRenderingOptions VlcRenderingOptions
+        {
+            get => GetValue(VlcRenderingOptionsProperty);
+            set => SetValue(VlcRenderingOptionsProperty, value);
+        }
+
         protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
         {
             base.OnApplyTemplate(e);
 
-            PART_Image = e.NameScope.Get<Image>("PART_RenderImage");
+            PART_Image = e.NameScope.Find<Image>("PART_RenderImage");
+            PART_NativeHost = e.NameScope.Find<NativeVideoPresenter>("PART_NativeHost");
 
-            if (PART_Image is VLCImageRenderer vb)
+            _templateApplied = true;
+
+            if (VlcRenderingOptions != LibVLCAvaloniaRenderingOptions.VlcNative)
             {
-                vb.SourceProvider = _provider;
+                if (PART_Image is VLCImageRenderer vb)
+                {
+                    vb.SourceProvider = _provider;
+                    vb.UseCustomDrawingOperation = VlcRenderingOptions == LibVLCAvaloniaRenderingOptions.AvaloniaCustomDrawingOperation;
+                }
+                else
+                {
+                    PART_Image.Bind(Image.SourceProperty, _provider.Display);
+                }
             }
-            else
-            {
-                PART_Image.Bind(Image.SourceProperty, _provider.Display);
-            }
+
+            InitMediaPlayer();
         }
 
         private IDisposable _playerEvents;
 
         private void InitMediaPlayer()
         {
-            if (!Design.IsDesignMode)
+            if (!Design.IsDesignMode && _templateApplied)
             {
                 _playerEvents?.Dispose();
                 _playerEvents = null;
 
-                _provider.Init(MediaPlayer);
-                _playerEvents = Observable.FromEventPattern(MediaPlayer, nameof(MediaPlayer.Playing))
-                    .ObserveOn(AvaloniaScheduler.Instance)
-                    .Subscribe(_ =>
-                    {
-                        if (PART_Image is VLCImageRenderer vb)
+                if (VlcRenderingOptions != LibVLCAvaloniaRenderingOptions.VlcNative)
+                {
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                        MediaPlayer.Hwnd = IntPtr.Zero;
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                        MediaPlayer.NsObject = IntPtr.Zero;
+                    else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                        MediaPlayer.XWindow = 0;
+
+                    _provider.Init(MediaPlayer);
+                    _playerEvents = Observable.FromEventPattern(MediaPlayer, nameof(MediaPlayer.Playing))
+                        .ObserveOn(AvaloniaScheduler.Instance)
+                        .Subscribe(_ =>
                         {
-                            vb.ResetStats();
-                        }
-                    });
+                            if (PART_Image is VLCImageRenderer vb)
+                            {
+                                vb.ResetStats();
+                            }
+                        });
+                }
+                else
+                {
+                    PART_NativeHost?.UpdatePlayerHandle(MediaPlayer);
+                }
             }
         }
     }

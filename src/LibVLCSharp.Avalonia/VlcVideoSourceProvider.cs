@@ -72,7 +72,7 @@ namespace LibVLCSharp.Avalonia
         /// </summary>
         private void CleanUp()
         {
-            _videoSource.Clear();
+            _videoSource?.Clear();
             _display.OnNext(null);
         }
 
@@ -257,7 +257,7 @@ namespace LibVLCSharp.Avalonia
         {
             if (!_disposed)
             {
-                _videoSource.Dispose();
+                _videoSource?.Dispose();
                 _videoSource = null;
                 _disposed = true;
                 MediaPlayer = null;

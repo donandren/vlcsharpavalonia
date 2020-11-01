@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="0.10.0-preview6" />
+    <PackageReference Include="Avalonia.Diagnostics" Version="0.10.0-preview6" />
     <PackageReference Include="LibVLCSharp" Version="3.3.1" />
   </ItemGroup>
   <ItemGroup>

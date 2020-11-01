@@ -73,6 +73,17 @@ namespace LibVLCSharp.Avalonia
             }
         }
 
+        public static readonly DirectProperty<VLCImageRenderer, bool> UseCustomDrawingOperationProperty =
+    VideoView.DisplayRenderStatsProperty.AddOwner<VLCImageRenderer>(v => v.UseCustomDrawingOperation, (s, v) => s.UseCustomDrawingOperation = v);
+
+        private bool _useCustomDrawingOperation = true;
+
+        public bool UseCustomDrawingOperation
+        {
+            get => _useCustomDrawingOperation;
+            set => SetAndRaise(UseCustomDrawingOperationProperty, ref _useCustomDrawingOperation, value);
+        }
+
         public void ResetStats()
         {
             _stats.Reset();
@@ -132,7 +143,7 @@ namespace LibVLCSharp.Avalonia
 
         public override void Render(DrawingContext context)
         {
-            if (LibVLCAvaloniaOptions.UseCustomDrawOperationRendering)
+            if (UseCustomDrawingOperation)
             {
                 var source = Source as IBitmap;
                 if (source != null)
