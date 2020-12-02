@@ -94,6 +94,7 @@ namespace LibVLCSharp.Avalonia
                     TransparencyLevelHint = WindowTransparencyLevel.Transparent,
                     Background = Brushes.Transparent,
                     SizeToContent = SizeToContent.WidthAndHeight,
+                    ShowInTaskbar = false,
                 };
 
                 _disposables = new CompositeDisposable()
