@@ -8,6 +8,7 @@ using Avalonia.Platform;
 using Avalonia.VisualTree;
 using LibVLCSharp.Shared;
 using System;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
@@ -36,6 +37,7 @@ namespace LibVLCSharp.Avalonia
         private bool _attached;
         private Window _floatingContent;
         private IDisposable _disposables;
+        private IDisposable _isEffectivellyVisibleSub;
 
         protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
         {
@@ -61,11 +63,19 @@ namespace LibVLCSharp.Avalonia
             _attached = true;
 
             InitializeNativeOverlay();
+
+            _isEffectivellyVisibleSub = this.GetVisualAncestors().OfType<IControl>()
+                    .Select(v => v.GetObservable(IsVisibleProperty))
+                    .CombineLatest(v => !v.Any(o => !o))
+                    .DistinctUntilChanged()
+                    .Subscribe(v => IsVisible = v);
         }
 
         protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
         {
             base.OnDetachedFromVisualTree(e);
+
+            _isEffectivellyVisibleSub?.Dispose();
 
             ShowNativeOverlay(false);
 
@@ -103,19 +113,22 @@ namespace LibVLCSharp.Avalonia
                     this.GetObservable(ContentProperty).Skip(1).Subscribe(_=> UpdateOverlayPosition()),
                     this.GetObservable(BoundsProperty).Skip(1).Subscribe(_ => UpdateOverlayPosition()),
                     Observable.FromEventPattern(VisualRoot, nameof(Window.PositionChanged))
-                    .Subscribe(_ => UpdateOverlayPosition()),
+                    .Subscribe(_ => UpdateOverlayPosition())
                 };
             }
 
-            ShowNativeOverlay(IsVisible);
+            ShowNativeOverlay(IsEffectivelyVisible);
         }
 
         private void ShowNativeOverlay(bool show)
         {
+            if (_floatingContent == null || _floatingContent.IsVisible == show)
+                return;
+
             if (show && _attached)
-                _floatingContent?.Show(VisualRoot as Window);
+                _floatingContent.Show(VisualRoot as Window);
             else
-                _floatingContent?.Hide();
+                _floatingContent.Hide();
         }
 
         private void UpdateOverlayPosition()
